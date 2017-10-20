@@ -232,7 +232,7 @@ social_icons:
 
 # Sidebar Avatar
 # in directory: /assets/images/avatar.gif
-avatar: http://oy11ny2us.bkt.clouddn.com/头像.jpg
+avatar: /img/头像.jpg
 
 
 # Table Of Contents in the Sidebar
