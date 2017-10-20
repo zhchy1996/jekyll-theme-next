@@ -1,5 +1,4 @@
 // TODO: Refactor.
-
 .posts-expand {
   padding-top: 40px;
 }
@@ -8,7 +7,6 @@
   .posts-expand {
     margin: 0 20px;
   }
-
   .post-body {
     pre {
       padding: 10px;
@@ -16,7 +14,6 @@
         padding-right: 10px;
       }
     }
-
     .highlight {
       margin-left: 0px;
       margin-right: 0px;
@@ -29,31 +26,32 @@
 }
 
 .posts-expand .post-body {
-  @include desktop() { text-align: justify; }
-
-
-  h2, h3, h4, h5, h6 {
+  @include desktop() {
+    text-align: center;
+  }
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     padding-top: 10px;
-
-    .header-anchor{
+    .header-anchor {
       float: right;
       margin-left: 10px;
       color: $grey-light;
       border-bottom-style: none;
       visibility: hidden;
-
-      &:hover{
+      &:hover {
         color: inherit;
       }
     }
-
-    &:hover .header-anchor{
+    &:hover .header-anchor {
       visibility: visible;
     }
   }
-
-  ul li { list-style: circle; }
-
+  ul li {
+    list-style: circle;
+  }
   img {
     box-sizing: border-box;
     margin: auto;
@@ -62,4 +60,6 @@
   }
 }
 
-.posts-expand .fancybox img { margin: 0 auto; }
+.posts-expand .fancybox img {
+  margin: 0 auto;
+}
