@@ -112,7 +112,7 @@ copyright: true
 canonical: true
 
 # Change headers hierarchy on site-subtitle (will be main site description) and on all post/pages titles for better SEO-optimization.
-seo: false
+seo: true
 
 # If true, will add site-subtitle to index page, added in jekyll config.
 # subtitle: Subtitle
@@ -240,7 +240,7 @@ social_icons:
 
 # Sidebar Avatar
 # in directory: /assets/images/avatar.gif
-avatar: /img/头像.jpg
+avatar: /assets/favicon.ico
 
 
 # Table Of Contents in the Sidebar
@@ -427,7 +427,7 @@ changyan:
 #add_this_id:
 
 # Share
-#duoshuo_share: true
+# duoshuo_share: true
 
 # Google Webmaster tools verification setting
 # See: https://www.google.com/webmasters/
