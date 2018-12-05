@@ -55,7 +55,7 @@ styleguidist会无视`__tests__`文件夹
 styleguidist会加载你的所有组件并且将他们全局暴露，这样你就可以在实例中随意使用它们
 - - - -
 #### 章节划分
-将组件分组添加到章节活接添加额外的markdown文档到你的style guide中。
+将组件分组添加到章节活接添加额外的markdown文档到你的style guide中。  
 每个章节都可以包含以下属性（所有属性都是可选的）
 * `name` 章节标题
 * `content` 包含概述内容的markdown文件的位置
