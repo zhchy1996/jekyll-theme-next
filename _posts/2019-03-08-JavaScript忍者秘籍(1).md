@@ -186,3 +186,100 @@ function outerFunction() {
 outerFunction();
 ```
 > 外部变量outerValue和外部函数outerFunction都是在全局作用域中声明的，该作用域（实际上就是一个闭包）从未消失（只要应用处于运行状态）。这也不足为奇，该函数可以访问到外部变量，因为它仍然在作用域内并且是可见的。
+
+```js
+var outerValue = "samurai";
+var later; //　　←---　声明一个空变量，稍后在后面的代码中使用
+
+function outerFunction() {
+　var innerValue = "ninja";　//←---　在函数内部声明一个值，该值在作用域局限于函数内部，在函数外部不允许访问
+
+　　function innerFunction() {
+　　　assert(outerValue === "samurai", "I can see the samurai.");
+　　　assert(innerValue === "ninja", "I can see the ninja.")
+　　}　　←---　在outerFunction函数中声明一个内部函数，声明该内部函数时，innerValue是在内部函数的作用域内的
+
+　　later = innerFunction; //　←---　将内部函数innerFunction的引用存储在变量later上，因为later在全局作用域内，所以我们可以对它进行调用
+}
+
+outerFunction();　//←---　调用outerFunction函数，创建内部函数innerFunction，并将内部函数赋值给变量later
+
+later();//　←---　通过later调用内部函数。我们不能直接调用内部函数，因为它的作用域（和innerValue一起）被限制在外部函数outerFunction之内
+```
+
+这就是闭包。闭包创建了被定义时的作用域内的变量和函数的安全气泡，因此函数获得了执行时所需的内容。该气泡与函数本身一起包含了函数和变量。
+
+虽然这些结构不容易看见（没有包含这么多信息的闭包对象可以进行观察），存储和引用这些信息会直接影响性能。谨记每一个通过闭包访问变量的函数都具有一个作用域链，作用域链包含闭包的全部信息，这一点非常重要。因此，虽然闭包是非常有用的，但不能过度使用。使用闭包时，所有的信息都会存储在内存中，直到JavaScript引擎确保这些信息不再使用（可以安全地进行垃圾回收）或页面卸载时，才会清理这些信息。
+
+- - - -
+#### 使用闭包
+##### 封装私有变量
+```js
+function Ninja() {　//←---　定义nijia构造函数
+  　var feints = 0; 　//←---　在构造函数内部声明一个变量，因为所声明的变量的作用域局限于构造函数的内部，所以它是一个“私有”变量。我们使用该变量统计ninja佯攻的次数
+  　this.getFeints = function() {
+  　　 return feints; 　//←---　创建用于访问计数变量feints的方法。由于在构造函数外部的代码是无法访问feints变量的，这是通过办读形式访问该变量的常用方法
+  　};
+  　this.feint = function() {
+  　　 feints++;
+  　};　　//←---　为feints变量声明一个累加方法。由于feints就私有变量，在外部是无法累加的，累加过程则被限制在我们提供的方法中
+  }
+  
+  var ninja1 = new Ninja();　//←---　现在开始测试，首先创建一个ninja的实例
+  ninja1.feint();　//←---　调用feint方法，通过该方法增加ninja的佯攻次数
+  
+  assert(ninja1.feints === undefined,//　←---　验证我们无法直接获取该变量值
+  　　　 "And the private data is inaccessible to us.");
+  assert(ninja1.getFeints() === 1, 
+  　　　 "We're able to access the internal feint count."); 　//←---　虽然我们无法直接对feints变量赋值，但是我们仍然能够通过getFeints方法操作该变量的值
+  
+  var ninja2 = new Ninja();
+  assert(ninja2.getFeints() === 0, 
+  　　　 "The second ninja object gets its own feints variable."); //　←---　当我们通过ninja构造函数创建一个新的ninja2实例时，ninja2对象则具有自己私有的feints变量
+
+```
+> 在本例中我们可通过闭包内部方法获取私有变量的值，但是不能直接访问。
+
+![](/img/JavaScript忍者秘籍/5-1.png)
+
+##### 回调函数
+```html
+<div id="box1">First Box</div>　//←---　创建用于展示动画的DOM元素
+<script>
+　function animateIt(elementId) {
+　　 var elem = document.getElementById(elementId); //　←---　在动画函数animatelt内部，获取DOM元素的引用
+　　 var tick = 0; 　　←---　创建一个计时器用于记录动画执行的次数
+　　 var timer = setInterval(function() {//　←---　创建并启动一个JavaScript内置的计时器，传入一个回调函数
+　　　 if (tick < 100) {
+　　　　 elem.style.left = elem.style.top = tick + "px";
+　　　　 tick++;
+　　　 }　　←---　每隔10毫秒调用一次计时器的回调函数，调整元素的位置100次
+　　　 else {
+　　　　 clearInterval(timer);
+　　　　 assert(tick === 100, 　//←---　执行了100次之后，停止计时器，并验证我们还可以看到与执行动画有关的变量
+　　　　　　　　　"Tick accessed via a closure.");
+　　　　 assert(elem, 
+　　　　　　　　　"Element also accessed via a closure.");
+　　　　 assert(timer, 
+　　　　　　　　　"Timer reference also obtained via a closure.");
+　　 }
+　　}, 10);　//←---　 setInterval函数的持续时间为10毫秒，也就是说回调函数每隔10秒调用一次
+　}
+　animateIt("box1");　//←---　全部都设置完成之后，我们可以执行动画函数并查看动画效果
+</script>
+```
+> 每次计时器中回调函数执行都可以读取到特定信息
+
+上述示例说明闭包内的函数不仅可以在创建的时刻访问这些变量，而且当闭包内部的函数执行时，还可以更新这些变量的值。闭包不是在创建的那一时刻的状态的快照，而是一个真实的状态封装，只要闭包存在，就可以对变量进行修改。
+
+- - - -
+#### 通过执行上下文来跟踪代码
+JavaScript代码有两种类型，一种是全局代码，在所有函数外部定义；一种是函数代码，位于函数内部。
+
+既然具有两种类型的代码，那么就有两种执行上下文：全局执行上下文和函数执行上下文。二者最重要的差别是：全局执行上下文只有一个，当JavaScript程序开始执行时就已经创建了全局上下文；而函数执行上下文是在每次调用函数时，就会创建一个新的。
+
+> 第4章介绍了当调用函数时可通过关键字访问函数上下文。函数执行上下文，虽然也称为上下文，但完全是不一样的概念。执行上下文是内部的JavaScript概念，JavaScript引擎使用执行上下文来跟踪函数的执行。
+
+JavaScript基于单线程的执行模型：在某个特定的时刻只能执行特定的代码。一旦发生函数调用，当前的执行上下文必须停止执行，并创建新的函数执行上下文来执行函数。当函数执行完成后，将函数执行上下文销毁，并重新回到发生调用时的执行上下文中。所以需要跟踪执行上下文——正在执行的上下文以及正在等待的上下文。最简单的跟踪方法是使用执行上下文栈（或称为调用栈）。
+
+![](/img/JavaScript忍者秘籍/5-2.png)
