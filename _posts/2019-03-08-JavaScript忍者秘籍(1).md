@@ -288,3 +288,60 @@ JavaScript基于单线程的执行模型：在某个特定的时刻只能执行�
 3. skulk函数进而调用report函数。又一次因为在同一个特定时刻只能执行特定代码，所以，暂停skulk执行上下文，创建新的Kuma作为参数的report函数的执行上下文，并置入执行上下文栈的顶部。
 4. report通过内置函数console.log（详见附录B）打印出消息后，report函数执行完成，代码又回到了skulk函数。report执行上下文从执行上下文栈顶部弹出，skulk函数执行上下文重新激活，skulk函数继续执行。
 5. skulk函数执行完成后也发生类似的事情：skulk函数执行上下文从栈顶端弹出，重新激活一直在等待的全局执行上下文并恢复执行。JavaScript的全局代码恢复执行。
+
+虽然执行上下文栈（execution context stack）是JavaScript内部概念，但仍然可以通过JavaScript调试器中查看，在JavaScript调试器中可以看到对应的调用栈（call stack）。
+
+![](/img/JavaScript忍者秘籍/5-3.png)
+
+- - - -
+#### 使用词法环境跟踪变量的作用域
+词法环境（lexical environment）是JavaScript引擎内部用来跟踪标识符与特定变量之间的映射关系。
+通常来说，词法环境与特定的JavaScript代码结构关联，既可以是一个函数、一段代码片段，也可以是try-catch语句。这些代码结构（函数、代码片段、try-catch）可以具有独立的标识符映射表。
+
+##### 代码嵌套
+![](/img/JavaScript忍者秘籍/5-4.png)
+
+在作用域范围内，每次执行代码时，代码结构都获得与之关联的词法环境。例如，每次调用skulk函数，都将创建新的函数词法环境。
+此外，需要着重强调的是，内部代码结构可以访问外部代码结构中定义的变量。例如，for循环可以访问report函数、skulk函数以及全局代码中的变量；report函数可以访问skulk函数及全局代码中的变量；skulk函数可以访问的额外变量但仅是全局代码中的变量。
+
+##### 代码嵌套与词法环境
+![](/img/JavaScript忍者秘籍/5-5.png)
+
+- - - -
+#### 理解JavaScript的变量类型
+在JavaScript中可以通过三个关键字定义变量`var`，`let`，`const`，它们有两点不同：可变性，与词法环境的关系；
+
+##### 变量可变性
+const不可变，不过如果是引用值的话可以改变其中内容但是不可以改变引用地址
+
+##### 定义变量的关键字与词法环境
+当使用关键字var时，该变量是在距离最近的函数内部或是在全局词法环境中定义的。（注意：忽略块级作用域）这是JavaScript由来已久的特性。
+
+```js
+var globalNinja = "Yoshi";　//←---　使用关键字var定义全局变量
+
+function reportActivity() {
+　 var functionActivity = "jumping";　//←---　使用关键字var定义函数内部的局部变量
+
+　　for (var i = 1; i < 3; i++) {
+　　　　　var forMessage = globalNinja + " " + functionActivity; //　←---　使用关键字var在for循环中定义两个变量
+　　　　　assert(forMessage === "Yoshi jumping",
+　　　　　　　　　"Yoshi is jumping within the for block");//　←---　在for循环中可以访问块级变量，函数内的局部变量以及全局变量
+　　　　　assert(i, "Current loop counter:" + i);
+　　}
+
+　　assert(i === 3 && forMessage === "Yoshi jumping",
+　　　　　　"Loop variables accessible outside of the loop");//　←---　但是在for循环外部，仍然能访问for循环中定义的变量
+　　}
+
+reportActivity();
+assert(typeof functionActivity === "undefined"
+　　 && typeof i === "undefined" && typeof forMessage === "undefined",
+　　 "We cannot see function variables outside of a function");//　←---　函数外部无法访问函数内部的局部变量
+
+```
+> 变量globalNinja和functionActivity能访问是在预料之中的，可以for循环中的变量依然能在外部访问
+
+这源于通过var声明的变量实际上总是在距离最近的函数内或全局词法环境中注册的，不关注块级作用域。图5.11描述了这一现象，图中展示了reportActivity函数内的for循环执行后的词法环境。
+![](/img/JavaScript忍者秘籍/5-6.jpg)
+
