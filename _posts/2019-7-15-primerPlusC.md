@@ -310,7 +310,7 @@ printf（）函数使用％f格式说明符打印十进制记数法的float和do
 如果您包含了complex.h头文件，则您可以用complex代替_Complex，用imaginary代替_Imaginary,用符号I表示-1的平方根。
 - - -
 #### 类型大小
-“C的内置运算符sizeof以字节为单位给出类型的大小。为打印sizeof数值，一些编译器要求用%lu代替％u，这是因为C允许由具体的实现来选择sizeof返回的结果值实际使用哪种无符号整数类型。C99为此提供了％zd说明符，如果编译器支持，可以考虑使用该说明符。”
+C的内置运算符sizeof以字节为单位给出类型的大小。为打印sizeof数值，一些编译器要求用%lu代替％u，这是因为C允许由具体的实现来选择sizeof返回的结果值实际使用哪种无符号整数类型。C99为此提供了％zd说明符，如果编译器支持，可以考虑使用该说明符。
 ```c
 #include <stdio.h>
 
@@ -324,4 +324,224 @@ int main(void)
 }
 ```
 - - -
-### 使用数据类型
+## 字符串和格式化输入/输出
+### 前导程序
+```c
+#include <stdio.h>
+#include <string.h>  // 提供strlen()函数的原型
+#define DENSITY 62.4 // 人的密度（单位：英镑/每立方尺)
+int main(void)
+{
+  float weight, volume;
+  int size, letters;
+  char name[40]; //name是一个有40个字符的数组
+
+  printf("hi! what's your first name?\n");
+  scanf("%s", name);
+  printf("%s, what's your weight?\n", name);
+  scanf("%f", &weight);
+  size = sizeof name;
+  letters = strlen(name);
+  volume = weight / DENSITY;
+  printf("%s, your volume is %2.2f cubic feet.\n", name, volume);
+  printf("your first name has %d letters\n", letters);
+  printf("we have %d bytes to store it\n", size);
+  return 0;
+}
+```
+> 使用数组存放字符串，该数组是内存中连续的40个字节，每个字节都能存放一个字符值  
+> 使用·`%s`来输出输入字符串*在`scanf()`中`weight`使用了&前缀而name没有使用  
+> 使用了C预处理器定义了代表62.4的符号常量DENSITY  
+> 使用`strlen()`来获取字符串长度  
+
+- - -
+### 字符串简介
+字符串（character string）就是一个或多个字符的序列。
+#### char数组类型和空字符
+C没有为字符串定义专门的变量类型，而是把它存储在char数组中。字符串中的字符存放在相邻的存储单元中，每个字符占用一个单元；而数组由相邻存储单元组成，所以把字符串存储到数组中是很自然的
+![](http://image.zhchy.info/20190802170257_CfON6G_primerPlusC-4-1.jpeg)
+上面的`\0`用来标记字符串的结束
+- - -
+#### 使用字符串
+```c
+#include <stdio.h>
+#define PRAISE "what a super marvelous name!"
+int main(void)
+{
+  char name[40];
+
+  printf("what's your name?\n");
+  scanf("%s", name);
+  printf("hello, %s.%s\n", name, PRAISE);
+  return 0;
+}
+```
+scanf（）只读取了Hilary Bubbles的名字Hilary。scanf（）开始读取输入以后，会在遇到的第一个空白字符空格（blank）、制表符（tab）或者换行符（newline）处停止读取。因此，它在遇到Hilary和Bubbles之间的空格时，就停止了扫描。一般情况下，使用％s的scanf（）只会把一个单词而不是把整个语句作为字符串读入。C使用其他读取输入函数（例如gets（））来处理一般的字符串。  
+
+**字符与字符串**
+字符串常量x与字符常量x不同。其中一个区别是‘x’属于基本类型（char），而x则属于派生类型（char数组）。第二个区别是x实际上由两个字符（‘x’和空字符‘\0’）组成
+![](http://image.zhchy.info/20190802193422_sl6VHp_primerPlusC-4-3.jpeg)
+- - -
+#### strlen()函数
+`strlen()`函数会返回字符串的长度
+```c
+#include <stdio.h>
+#include <string.h> //提供strlen()原型
+#define PRAISE "what a super marvelous name!"
+int main(void)
+{
+  char name[40];
+
+  printf("what's your name?\n");
+  scanf("%s", name);
+  printf("hello, %s.%s\n", name, PRAISE);
+  printf("your name of %d letters occupies %d memory cells.\n", strlen(name), sizeof(name));
+  printf("the phrase of praise has %d letters", strlen(PRAISE));
+  printf("and occupies %d memory cells.\n", sizeof PRAISE);
+  return 0;
+}
+```
+根据sizeof运算符的报告，数组name有40个内存单元。不过只用了其中前6个单元来存放Morgan，这是strlen（）所报告的。数组name的第7个单元中放置空字符，它的存在告诉strlen（）在哪里停止计数。
+![](http://image.zhchy.info/20190805143813_0IsPDS_primerPlusC-4-4.jpeg)
+对于PRAISE，您会发现strlen（）再一次给出了字符串中字符（包括空格和标点符号）的准确数目。Sizeof运算符提供给您的数目比前者大1，这是因为它把用来标志字符串结束的不可见的空字符也计算在内。  
+在使用sizeof时对于类型`()`是必须的，但是对于具体量是可选的，但是推荐在所有情况下都是用`()`
+- - -
+### 常量和C预处理器
+使用`#define TAXRATE 0.015`可定义一个名字为TAXRATE值为0.015的常量   
+当编译程序时，值0.015会在TAXRATE出现的每个地方替换它
+- - -
+#### const修饰符
+C90添加了一种创建符号常量的第二种方法，即可以使用const关键字把一个变量声明转换为常量声明：
+```c
+const int MONTHS = 12;// MONTHS是一个代表12的符号常量
+```
+- - -
+### 研究如利用printf()和scanf()
+#### printf()函数
+请求printf（）打印变量的指令取决于变量的类型。例如，在打印整数时使用％d符号，而在打印字符时使用％c符号。这些符号被称为转换说明（conversion specification），因为它们指定了如何把数据转换成可显示的形式。  
+
+转换说明|输出
+-|-
+%a|浮点数、十六进制数字和p-记数法（C99)
+%A|浮点数、十六进制数字和P-记数法（C99)
+%c|一个字符
+%d|有符号十进制整数
+%e|浮点数、e-记数法
+%E|浮点数、E-记数法
+%f|浮点数、十进制记数法
+%g|根据数值不同自动选择％f或％e。%e格式在指数小于-4或者大于等于精度时使用
+%G|根据数值不同自动选择％f或％E。％E格式在指数小于-4或者大于等于精度时使用
+%i|有符号十进制整数（与％d相同）
+%o|无符号八进制整数
+%p|指针
+%s|字符串
+%u|无符号十进制整数
+%x|使用十六进制数字0f的无符号十六进制整数
+%X|使用十六进制数字0F的无符号十六进制整数
+%%|打印一个百分号  
+
+- - -
+##### 使用printf()
+```c
+#include <stdio.h>
+#define PI 3.141593
+
+int main(void)
+{
+  int number = 5;
+  float expresso = 13.5;
+  int cost = 3100;
+  printf("the %d ceos drank %f cups of expresso.\n", number, expresso);
+  printf("the value of pi is %f\n", PI);
+  printf("farewell! thou art too dear for my possessing, \n");
+  printf("%c%d\n", '$', 2 * cost);
+}
+```
+![](http://image.zhchy.info/20190805161626_6o5v3R_primerPlusC-4-6.jpeg)  
+![](http://image.zhchy.info/20190805161650_WsjBG8_primerPlusC-4-7.jpeg)
+- - -
+##### printf()的转换说明修饰符
+可以在％和定义转换字符之间通过插入修饰符对基本的转换说明加以修改。
+
+修饰符|意义
+-|-
+标志|五种标志（-、+、空格、#和0）都将在表4.5中描述。可以使用零个或者多个标志
+digit（s）|字段宽度的最小值。如果该字段不能容纳要打印的数或者字符串，系统就会使用更宽的字段,示例：“％4d”
+.digit（s）|精度。对于％e、％E和％f转换，是将要在小数点的右边打印的数字的位数。对于％g和％G转换，是有效数字的最大位数。对于％s转换，是将要打印的字符的最大数目。对于整数转换，是将要打印的数字的最小位数；如果必要，要使用前导零来达到这个位数。只使用“.”表示其后跟随一个零，所以％.f与％.0f相同,示例；“％5.2f”打印一个浮点数，它的字段宽度为5个字符，小数点后有两个数字
+h|和整数转换说明符一起使用，表示一个short int或unsigned short int类型数值,示例：“%hu”、“%hx”和“％6.4hd”
+hh|和整数转换说明符一起使用，表示一个signed char或unsigned char类型数值,示例：“%hhu”、“%hhx”和“％6.4hhd”
+j|和整数转换说明符一起使用，表示一个intmax_t或uintmax_t值,示例：“%jd”和“％8jX”
+l|和整数转换说明符一起使用，表示一个long int或unsigned long int类型值,示例：“％ld”和“％81u”
+ll|和整数转换说明符一起使用，表示一个long long int或unsigned long long int类型值（C99）,示例；“％lld”和“％8llu”
+L|和浮点转换说明符一起使用，表示一个long double值,示例；“%Lf”和“％10.4Le”
+t|和整数转换说明符一起使用，表示一个ptrdiff_t值（与两个指针之间的差相对应的类型）（C99）,示例：“％td”和“％12ti”
+z|和整数转换说明符一起使用，表示一个size_t值（sizeof返回的类型）（C99）,示例：“％zd”和“％12zx”
+
+标 志|意 义
+-|-
+-|项目是左对齐的；也就是说，会把项目打印在字段的左侧开始处,示例：“％-20s”
++|有符号的值若为正，则显示带加号的符号；若为负，则带减号的符号,示例：“％+6.2f”
+(空格)|有符号的值若为正，则显示时带前导空格（但是不显示符号）；若为负，则带减号符号。+标志会覆盖空格标志,示例：“％6.2f”
+`#`|使用转换说明的可选形式。若为％o格式，则以0开始；若为%x和%X格式，则以0x或0X开始。对于所有的浮点形式，#保证了即使不跟任何数字，也打印一个小数点字符。对于%g和％G格式，它防止尾随零被删除,示例：“％#o”、“％#8.0f”和“％+#10.3E”
+0|对于所有的数字格式，用前导零而不是用空格填充字段宽度。如果出现-标志或者指定了精度（对于整数）则忽略该标志,示例：“％010d”和“％08.3f”  
+
+示例  
+```c
+#include <stdio.h>
+#define PAGES 931
+int main(void)
+{
+  printf("*%d*\n", PAGES); // *931*
+  printf("*%2d*\n", PAGES); // *931*
+  printf("*%10d*\n", PAGES); // *       931*
+  printf("*%-10d*\n", PAGES); // *931       *
+  return 0;
+}
+```  
+```c
+#include <stdio.h>
+
+int main(void)
+{
+  const double RENT = 3852.99;
+
+  printf("*%f*\n", RENT); // *3852.990000*
+  printf("*%e*\n", RENT); // *3.852990e+03*
+  printf("*%4.2f*\n", RENT); // *3852.99*
+  printf("*%3.1f*\n", RENT); // *3853.0*
+  printf("*%10.3f*\n", RENT); // *  3852.990*
+  printf("*%10.3e*\n", RENT); // * 3.853e+03*
+  printf("*%+4.2f*\n", RENT); // *+3852.99*
+  printf("*%010.2f*\n", RENT); // *0003852.99*
+  return 0;
+}
+```
+
+```c
+#include <stdio.h>
+int main(void)
+{
+  printf("%x %X %#x\n", 31, 31, 31); // 1f 1F 0x1f
+  printf("**%d**% d**% d**\n", 42, 42, -42); // **42** 42**-42**
+  printf("**%5d**%5.3d**%05d**%05.3d**\n", 6, 6, 6, 6); // **    6**  006**00006**  006**
+  return 0;
+}
+```
+```c
+#include <stdio.h>
+#define DLURB "Authentic imitation! "
+int main(void)
+{
+  printf("/%2s/\n", DLURB); // /Authentic imitation! /
+  printf("/%24s/\n", DLURB); // /   Authentic imitation! /
+  printf("/%24.5s/\n", DLURB); // /                   Authe/
+  printf("/%-24.5s/\n", DLURB); // /Authe                   /
+  return 0;
+}
+```
+- - -
+#### 转换说明的意义
+它把存储在计算机中的二进制格式的数值转换成一系列字符（一个字符串）以便于显示
+不匹配的情况
+
+
