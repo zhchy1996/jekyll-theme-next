@@ -2,7 +2,7 @@
 title: JavaScript权威指南
 cription: JavaScript权威指南笔记
 categories:
- - js
+ - JavaScript
 tags:
  - js
 ---
