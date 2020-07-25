@@ -8,7 +8,22 @@ tags:
 ---
 
 # 设计模式
-开放封闭原则：对拓展开放，对修改封闭。说得更准确点，软件实体（类、模块、函数）可以扩展，但是不可修改
+## 道
+### SOLID设计原则
+* **单一功能原则（Single Responsibility Principle**
+* **开放封闭原则（Opened Closed Principle**
+* 里式替换原则（Liskov Substitution Principle）
+* 接口隔离原则（Interface Segregation Principle）
+* 依赖反转原则（Dependency Inversion Principle）
+
+> 开放封闭原则：对拓展开放，对修改封闭。说得更准确点，软件实体（类、模块、函数）可以扩展，但是不可修改
+
+### 设计模式核心思想-封装变化
+将变与不变分离，确保变化的部分灵活、不变的部分稳定。
+
+---
+## 术
+![](https://user-gold-cdn.xitu.io/2019/4/6/169f16406d230ffe?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
 ---
 # 简单工厂模式
@@ -382,6 +397,123 @@ Dog dog = new Dog('旺财', 'male', 3, '柴犬')
 Dog dog_copy = new Dog('旺财', 'male', 3, '柴犬')
 ```
 没错，我们不得不把一模一样的参数传两遍，非常麻烦。而原型模式允许我们通过调用克隆方法的方式达到同样的目的，比较方便，所以 Java 专门针对原型模式设计了一套接口和方法，在必要的场景下会通过原型方法来应用原型模式。当然，在更多的情况下，Java 仍以“实例化类”这种方式来创建对象。
+
+### JavaScript中的类
+JS 的类基于prototype,ES6 的class为语法糖
+> ECMAScript 2015 中引入的 JavaScript 类实质上是 JavaScript 现有的基于原型的继承的语法糖。类语法不会为 JavaScript 引入新的面向对象的继承模型。 ——MDN
+
+---
+## 原型范式
+了解原型与原型链
+![](https://user-gold-cdn.xitu.io/2019/3/11/1696bfe41aa0a184?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+![](https://user-gold-cdn.xitu.io/2019/3/11/1696bfd959ce30b3?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+需要了解深拷贝
+> [深入了解深拷贝](https://segmentfault.com/a/1190000016672263)
+
+---
+# 装饰器模式
+在不改变原对象的基础上，通过对其进行包装拓展，使原有对象可以满足用户的更复杂需求  
+## 给点击按钮弹窗添加逻辑
+```js
+// 定义打开按钮
+class OpenButton {
+    // 点击后展示弹框（旧逻辑）
+    onClick() {
+        const modal = new Modal()
+    	modal.style.display = 'block'
+    }
+}
+
+// 定义按钮对应的装饰器
+class Decorator {
+    // 将按钮实例传入
+    constructor(open_button) {
+        this.open_button = open_button
+    }
+    
+    onClick() {
+        this.open_button.onClick()
+        // “包装”了一层新逻辑
+        this.changeButtonStatus()
+    }
+    
+    changeButtonStatus() {
+        this.changeButtonText()
+        this.disableButton()
+    }
+    
+    disableButton() {
+        const btn =  document.getElementById('open')
+        btn.setAttribute("disabled", true)
+    }
+    
+    changeButtonText() {
+        const btn = document.getElementById('open')
+        btn.innerText = '快去登录'
+    }
+}
+
+const openButton = new OpenButton()
+const decorator = new Decorator(openButton)
+
+document.getElementById('open').addEventListener('click', function() {
+    // openButton.onClick()
+    // 此处可以分别尝试两个实例的onClick方法，验证装饰器是否生效
+    decorator.onClick()
+})
+```
+我们把实例传给了`Decorator`这样方便未来的拓展
+
+---
+## 单一职责原则
+文本修改&按钮置灰这两个变化，被封装在了两个不同的方法里,这是一种单一职责的体现,在日常开发中要首先有**尝试拆分**的敏感，其次要有**该不该拆**的判断，如果逻辑颗粒度过小，盲目拆分会导致项目中有过多零碎的小方法。
+
+---
+## ES7中的装饰器
+ES7 中我们可以通过@语法糖给类添加装饰器
+```js
+// 装饰器函数，它的第一个参数是目标类
+function classDecorator(target) {
+    target.hasDecorator = true
+  	return target
+}
+
+// 将装饰器“安装”到Button类上
+@classDecorator
+class Button {
+    // Button类的相关逻辑
+}
+
+// 验证装饰器是否生效
+console.log('Button 是否被装饰了：', Button.hasDecorator)
+```
+也可是使用它来装饰类里面的方法
+```js
+// 具体的参数意义，在下个小节，这里大家先感知一下操作
+function funcDecorator(target, name, descriptor) {
+    let originalMethod = descriptor.value
+    descriptor.value = function() {
+    console.log('我是Func的装饰器逻辑')
+    return originalMethod.apply(this, arguments)
+  }
+  return descriptor
+}
+
+class Button {
+    @funcDecorator
+    onClick() { 
+        console.log('我是Func的原有逻辑')
+    }
+}
+
+// 验证装饰器是否生效
+const button = new Button()
+button.onClick()
+```
+
+
+
 
 
 
