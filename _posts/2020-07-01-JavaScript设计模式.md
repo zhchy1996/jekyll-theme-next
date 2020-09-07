@@ -512,6 +512,428 @@ const button = new Button()
 button.onClick()
 ```
 
+---
+## 装饰器语法糖背后的故事
+### 函数传参 & 调用
+```js
+function classDecorator(target) {
+    target.hasDecorator = true
+  	return target
+}
+
+// 将装饰器“安装”到Button类上
+@classDecorator
+class Button {
+    // Button类的相关逻辑
+}
+```
+给类添加装饰器时，`target`是类本身  
+
+```js
+function funcDecorator(target, name, descriptor) {
+    let originalMethod = descriptor.value
+    descriptor.value = function() {
+        console.log('我是Func的装饰器逻辑')
+        return originalMethod.apply(this, arguments)
+    }
+    return descriptor
+}
+
+class Button {
+    @funcDecorator
+    onClick() { 
+        console.log('我是Func的原有逻辑')
+    }
+}   
+```
+修饰方法时`target`是`Button.prototype`,因为**onClick 方法总是要依附其实例存在的，修饰 onClik 其实是修饰它的实例。但我们的装饰器函数执行的时候，Button 实例还并不存在。为了确保实例生成后可以顺利调用被装饰好的方法，装饰器只能去修饰 Button 类的原型对象。**  
+
+### 将“属性描述对象”交到你手里
+```js
+function funcDecorator(target, name, descriptor) {
+    let originalMethod = descriptor.value
+    descriptor.value = function() {
+    console.log('我是Func的装饰器逻辑')
+    return originalMethod.apply(this, arguments)
+  }
+  return descriptor
+}
+```
+`target`是原型，`name`是要修饰的属性，`descriptor`就是`Object.defineProperty(obj, prop, descriptor)`中的`descriptor`
+
+---
+## 生产实践
+### React中的装饰器:HOC
+> 高阶组件就是一个函数，且该函数接受一个组件作为参数，并返回一个新的组件。  
+
+```js
+// 高阶组件
+import React, { Component } from 'react'
+
+const BorderHoc = WrappedComponent => class extends Component {
+  render() {
+    return <div style={{ border: 'solid 1px red' }}>
+      <WrappedComponent />
+    </div>
+  }
+}
+export default borderHoc
+
+// 业务组件
+import React, { Component } from 'react'
+import BorderHoc from './BorderHoc'
+
+// 用BorderHoc装饰目标组件
+@BorderHoc 
+class TargetComponent extends React.Component {
+  render() {
+    // 目标组件具体的业务逻辑
+  }
+}
+
+// export出去的其实是一个被包裹后的组件
+export default TargetComponent
+```
+
+### 使用装饰器改写 Redux connect
+```js
+import React, { Component } from 'react'
+import { connect } from 'react-redux'
+import { bindActionCreators } from 'redux'
+import action from './action.js'
+
+class App extends Component {
+  render() {
+    // App的业务逻辑
+  }
+}
+
+function mapStateToProps(state) {
+  // 假设App的状态对应状态树上的app节点
+  return state.app
+}
+
+function mapDispatchToProps(dispatch) {
+  // 这段看不懂也没关系，下面会有解释。重点理解connect的调用即可
+  return bindActionCreators(action, dispatch)
+}
+
+// 把App组件与Redux绑在一起
+export default connect(mapStateToProps, mapDispatchToProps)(App)
+```
+
+```js
+import { connect } from 'react-redux'
+import { bindActionCreators } from 'redux'
+import action from './action.js'
+
+function mapStateToProps(state) {
+  return state.app
+}
+
+function mapDispatchToProps(dispatch) {
+  return bindActionCreators(action, dispatch)
+}
+
+// 将connect调用后的结果作为一个装饰器导出
+export default connect(mapStateToProps, mapDispatchToProps)
+// 在组件文件里引入connect：
+
+import React, { Component } from 'react'
+import connect from './connect.js'   
+
+@connect
+export default class App extends Component {
+  render() {
+    // App的业务逻辑
+  }
+}
+```
+> [core-decorators](https://github.com/jayphelps/core-decorators)
+
+---
+# 适配器模式
+适配器模式通过把一个类的接口变换成客户端所期待的另一种接口，可以帮我们解决不兼容的问题。
+
+## axios中的适配器
+在 [axios 的核心逻辑](https://github.com/axios/axios/blob/master/lib/core/Axios.js)中，我们可以注意到实际上派发请求的是 [dispatchRequest 方法](https://github.com/axios/axios/blob/master/lib/core/dispatchRequest.js)。该方法内部其实主要做了两件事：
+1. 数据转换，转换请求体/响应体，可以理解为数据层面的适配；
+2. 调用适配器。
+
+调用如下适配器：
+```js
+function getDefaultAdapter() {
+  var adapter;
+  // 判断当前是否是node环境
+  if (typeof process !== 'undefined' && Object.prototype.toString.call(process) === '[object process]') {
+    // 如果是node环境，调用node专属的http适配器
+    adapter = require('./adapters/http');
+  } else if (typeof XMLHttpRequest !== 'undefined') {
+    // 如果是浏览器环境，调用基于xhr的适配器
+    adapter = require('./adapters/xhr');
+  }
+  return adapter;
+}
+```
+
+http适配器
+```js
+module.exports = function httpAdapter(config) {
+  return new Promise(function dispatchHttpRequest(resolvePromise, rejectPromise) {
+    // 具体逻辑
+  }
+}
+```
+
+xhr适配器
+```js
+module.exports = function xhrAdapter(config) {
+  return new Promise(function dispatchXhrRequest(resolve, reject) {
+    // 具体逻辑
+  }
+}
+```
+
+---
+# 代理模式
+## ES6 的Proxy
+```js
+const proxy = new Proxy(obj, handler)
+```
+每次访问obj都需要通过handler
+
+getter拦截
+```js
+// 普通私密信息
+const baseInfo = ['age', 'career']
+// 最私密信息
+const privateInfo = ['avatar', 'phone']
+
+// 用户（同事A）对象实例
+const user = {
+    ...(一些必要的个人信息)
+    isValidated: true,
+    isVIP: false,
+}
+
+// 掘金婚介所登场了
+const JuejinLovers = new Proxy(girl, {
+  get: function(girl, key) {
+      if(baseInfo.indexOf(key)!==-1 && !user.isValidated) {
+          alert('您还没有完成验证哦')
+          return
+      }
+      
+      //...(此处省略其它有的没的各种校验逻辑)
+    
+      // 此处我们认为只有验证过的用户才可以购买VIP
+      if(user.isValidated && privateInfo.indexOf(key) && !user.isVIP) {
+          alert('只有VIP才可以查看该信息哦')
+          return
+      }
+  }
+})
+```
+
+setter拦截
+```js
+// 规定礼物的数据结构由type和value组成
+const present = {
+    type: '巧克力',
+    value: 60,
+}
+
+// 为用户增开presents字段存储礼物
+const girl = {
+  // 姓名
+  name: '小美',
+  // 自我介绍
+  aboutMe: '...'（大家自行脑补吧）
+  // 年龄
+  age: 24,
+  // 职业
+  career: 'teacher',
+  // 假头像
+  fakeAvatar: 'xxxx'(新垣结衣的图片地址）
+  // 真实头像
+  avatar: 'xxxx'(自己的照片地址),
+  // 手机号
+  phone: 123456,
+  // 礼物数组
+  presents: [],
+  // 拒收50块以下的礼物
+  bottomValue: 50,
+  // 记录最近一次收到的礼物
+  lastPresent: present,
+}
+
+// 掘金婚介所推出了小礼物功能
+const JuejinLovers = new Proxy(girl, {
+  get: function(girl, key) {
+    if(baseInfo.indexOf(key)!==-1 && !user.isValidated) {
+        alert('您还没有完成验证哦')
+        return
+    }
+    
+    //...(此处省略其它有的没的各种校验逻辑)
+  
+    // 此处我们认为只有验证过的用户才可以购买VIP
+    if(user.isValidated && privateInfo.indexOf(key)!==-1 && !user.isVIP) {
+        alert('只有VIP才可以查看该信息哦')
+        return
+    }
+  }
+  
+  set: function(girl, key, val) {
+ 
+    // 最近一次送来的礼物会尝试赋值给lastPresent字段
+    if(key === 'lastPresent') {
+      if(val.value < girl.bottomValue) {
+          alert('sorry，您的礼物被拒收了')
+          return
+      }
+    
+      // 如果没有拒收，则赋值成功，同时并入presents数组
+      girl.lastPresent = val
+      girl.presents = [...girl.presents, val]
+    }
+  }
+ 
+})
+```
+
+## 常见四种代理模式
+### 事件代理
+```js
+// 获取父元素
+const father = document.getElementById('father')
+
+// 给父元素安装一次监听函数
+father.addEventListener('click', function(e) {
+    // 识别是否是目标子元素
+    if(e.target.tagName === 'A') {
+        // 以下是监听函数的函数体
+        e.preventDefault()
+        alert(`我是${e.target.innerText}`)
+    }
+} )
+```
+
+### 虚拟代理
+图片预加载
+
+错误的做法
+```js
+class PreLoadImage {
+    // 占位图的url地址
+    static LOADING_URL = 'xxxxxx'
+    
+    constructor(imgNode) {
+        // 获取该实例对应的DOM节点
+        this.imgNode = imgNode
+    }
+    
+    // 该方法用于设置真实的图片地址
+    setSrc(targetUrl) {
+        // img节点初始化时展示的是一个占位图
+        this.imgNode.src = PreLoadImage.LOADING_URL
+        // 创建一个帮我们加载图片的Image实例
+        const image = new Image()
+        // 监听目标图片加载的情况，完成时再将DOM上的img节点的src属性设置为目标图片的url
+        image.onload = () => {
+            this.imgNode.src = targetUrl
+        }
+        // 设置src属性，Image实例开始加载图片
+        image.src = targetUrl
+    }
+}
+```
+
+正确的做法
+```js
+class PreLoadImage {
+    constructor(imgNode) {
+        // 获取真实的DOM节点
+        this.imgNode = imgNode
+    }
+     
+    // 操作img节点的src属性
+    setSrc(imgUrl) {
+        this.imgNode.src = imgUrl
+    }
+}
+
+class ProxyImage {
+    // 占位图的url地址
+    static LOADING_URL = 'xxxxxx'
+
+    constructor(targetImage) {
+        // 目标Image，即PreLoadImage实例
+        this.targetImage = targetImage
+    }
+    
+    // 该方法主要操作虚拟Image，完成加载
+    setSrc(targetUrl) {
+       // 真实img节点初始化时展示的是一个占位图
+        this.targetImage.setSrc(ProxyImage.LOADING_URL)
+        // 创建一个帮我们加载图片的虚拟Image实例
+        const virtualImage = new Image()
+        // 监听目标图片加载的情况，完成时再将DOM上的真实img节点的src属性设置为目标图片的url
+        virtualImage.onload = () => {
+            this.targetImage.setSrc(targetUrl)
+        }
+        // 设置src属性，虚拟Image实例开始加载图片
+        virtualImage.src = targetUrl
+    }
+}
+```
+ProxyImage 帮我们调度了预加载相关的工作，我们可以通过 ProxyImage 这个代理，实现对真实 img 节点的间接访问，并得到我们想要的效果。
+
+在这个实例中，virtualImage 这个对象是一个“幕后英雄”，它始终存在于 JavaScript 世界中、代替真实 DOM 发起了图片加载请求、完成了图片加载工作，却从未在渲染层面抛头露面。因此这种模式被称为“虚拟代理”模式。
+
+### 缓存代理
+对计算结果缓存
+```js
+// addAll方法会对你传入的所有参数做求和操作
+const addAll = function() {
+    console.log('进行了一次新计算')
+    let result = 0
+    const len = arguments.length
+    for(let i = 0; i < len; i++) {
+        result += arguments[i]
+    }
+    return result
+}
+
+// 为求和方法创建代理
+const proxyAddAll = (function(){
+    // 求和结果的缓存池
+    const resultCache = {}
+    return function() {
+        // 将入参转化为一个唯一的入参字符串
+        const args = Array.prototype.join.call(arguments, ',')
+        
+        // 检查本次入参是否有对应的计算结果
+        if(args in resultCache) {
+            // 如果有，则返回缓存池里现成的结果
+            return resultCache[args]
+        }
+        return resultCache[args] = addAll(...arguments)
+    }
+})()
+```
+
+### 保护代理
+上面拦截getter和setter就是一种保护代理
+
+## 小结
+代理模式十分多样，可以是为了加强控制、拓展功能、提高性能，也可以仅仅是为了优化我们的代码结构、实现功能的解耦。
+
+---
+
+
+
+
 
 
 
